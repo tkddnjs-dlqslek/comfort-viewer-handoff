@@ -1,120 +1,80 @@
 /**
- * Comfort Viewer - Content Script v14
+ * Comfort Viewer - Content Script v11
  *
- * v13 → v14 변경:
- * - 성능 대폭 개선: 타일 100→48, API 호출 최소화
- * - cataas.com → placekitten.com (즉시 로딩)
- * - loremflickr.com 제거, 토끼도 some-random-api 사용
- * - DocumentFragment로 DOM 일괄 삽입
- * - 백그라운드 프리워밍 (인기 테마 자동 프리페치)
- * - 테마 캐시 유지
+ * v10 → v11 변경:
+ * - YouTube JS가 video 엘리먼트 크기를 리셋하는 문제 해결:
+ *   MutationObserver로 video style 변경 감지 + 강제 override
+ * - .html5-video-container 높이 0 문제 fix
+ * - 활성화 후 window resize 이벤트 dispatch
+ * - 비활성화 시 video/container 스타일도 완전 복원
  */
 
 (function () {
   "use strict";
 
-  console.log("[CV] v14 loaded");
+  console.log("[CV] v11 loaded");
 
   const VIDEO_WIDTH = 60;
-  const TILE_COUNT = 48; // 100 → 48 (6×8 그리드 정도)
 
   // ═══════════════════════════════════════
-  //  some-random-api.com 헬퍼
+  //  테마별 이미지 가져오기 (전부 로컬 번들)
   // ═══════════════════════════════════════
-  async function fetchRandomApi(animal, count) {
-    // 8개만 병렬 요청 → 나머지는 반복 사용
-    const batchSize = Math.min(count, 8);
-    const promises = [];
-    for (let i = 0; i < batchSize; i++) {
-      promises.push(
-        fetch(`https://some-random-api.com/animal/${animal}`)
-          .then(r => r.json())
-          .then(d => d.image)
-          .catch(() => null)
-      );
-    }
-    const results = await Promise.all(promises);
-    const unique = results.filter(Boolean);
-    if (unique.length === 0) return [];
-    // 반복해서 count 채우기
+  const TILE_COUNT = 80;
+
+  function localImageUrls(animal, count) {
     const urls = [];
-    for (let i = 0; i < count; i++) {
-      urls.push(unique[i % unique.length]);
+    for (let i = 1; i <= count; i++) {
+      urls.push(chrome.runtime.getURL(`images/${animal}/${i}.jpg`));
+    }
+    // 매번 다른 배치로 셔플
+    for (let i = urls.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [urls[i], urls[j]] = [urls[j], urls[i]];
     }
     return urls;
   }
 
-  // ═══════════════════════════════════════
-  //  테마별 이미지 가져오기
-  // ═══════════════════════════════════════
   const THEME_FETCHERS = {
-    dog: async (count) => {
-      const res = await fetch(`https://dog.ceo/api/breeds/image/random/${Math.min(count, 50)}`);
-      const data = await res.json();
-      const urls = data.message || [];
-      while (urls.length < count && urls.length > 0) urls.push(urls[urls.length % urls.length]);
-      return urls.slice(0, count);
-    },
-    cat: async (count) => {
-      // placekitten: 즉시 로딩, 크기만 다르게
-      const sizes = [
-        [150,100],[160,110],[140,105],[155,95],[145,100],
-        [150,110],[160,100],[140,95],[155,105],[145,110],
-        [148,98],[152,102],[158,108],[142,92],[156,96],
-        [144,104],[150,106],[160,94],[138,100],[162,100],
-      ];
-      const urls = [];
-      for (let i = 0; i < count; i++) {
-        const [w, h] = sizes[i % sizes.length];
-        urls.push(`https://placekitten.com/${w}/${h}`);
+    dog: async (count) => localImageUrls("dog", count),
+    cat: async (count, gifMode) => {
+      const urls = localImageUrls("cat", count);
+      if (gifMode) {
+        // 10% GIF: 로컬 이미지 중 랜덤 10%를 cataas GIF로 교체
+        const gifCount = Math.round(count * 0.1);
+        const base = Date.now();
+        const indices = Array.from({length: count}, (_, i) => i);
+        for (let i = indices.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [indices[i], indices[j]] = [indices[j], indices[i]];
+        }
+        for (let k = 0; k < gifCount; k++) {
+          urls[indices[k]] = `https://cataas.com/cat/gif?t=${base}_gif_${k}`;
+        }
       }
       return urls;
     },
-    cat_gif: async (count) => {
-      const base = Date.now();
-      const gifCount = Math.min(count, 20);
-      const urls = [];
-      for (let i = 0; i < gifCount; i++) {
-        urls.push(`https://cataas.com/cat/gif?t=${base}_${i}`);
-      }
-      while (urls.length < count) urls.push(urls[urls.length % gifCount]);
-      return urls;
-    },
-    koala: async (count) => fetchRandomApi("koala", count),
-    rabbit: async (count) => fetchRandomApi("rabbit", count),
-    panda: async (count) => fetchRandomApi("panda", count),
-    fox: async (count) => {
-      // randomfox.ca: 정적 파일, 즉시 로딩 (1~123)
-      const urls = [];
-      const used = new Set();
-      const max = Math.min(count, 123);
-      for (let i = 0; i < max; i++) {
-        let n;
-        do { n = Math.floor(Math.random() * 123) + 1; } while (used.has(n));
-        used.add(n);
-        urls.push(`https://randomfox.ca/images/${n}.jpg`);
-      }
-      while (urls.length < count) urls.push(urls[urls.length % max]);
-      return urls;
-    },
-    bird: async (count) => fetchRandomApi("bird", count),
-    raccoon: async (count) => fetchRandomApi("raccoon", count),
-    red_panda: async (count) => fetchRandomApi("red_panda", count),
-    kangaroo: async (count) => fetchRandomApi("kangaroo", count),
-    whale: async (count) => fetchRandomApi("whale", count),
+    fox: async (count) => localImageUrls("fox", count),
+    capybara: async (count) => localImageUrls("capybara", count),
+    rabbit: async (count) => localImageUrls("rabbit", count),
+    red_panda: async (count) => localImageUrls("red_panda", count),
+    ferret: async (count) => localImageUrls("ferret", count),
+    snow_leopard: async (count) => localImageUrls("snow_leopard", count),
     mixed: async (count) => {
       const q = Math.ceil(count / 4);
-      const [dogs, cats, foxes, pandas] = await Promise.all([
-        THEME_FETCHERS.dog(q),
-        THEME_FETCHERS.cat(q),
-        THEME_FETCHERS.fox(q),
-        THEME_FETCHERS.panda(q),
-      ]);
+      const dogs = localImageUrls("dog", q);
+      const cats = localImageUrls("cat", q);
+      const foxes = localImageUrls("fox", q);
+      const capys = localImageUrls("capybara", q);
       const all = [];
-      const sources = [dogs, cats, foxes, pandas];
+      const sources = [dogs, cats, foxes, capys];
       for (let i = 0; i < count; i++) {
         const src = sources[i % sources.length];
         if (src.length > 0) all.push(src.shift());
+      }
+      // 믹스도 셔플
+      for (let i = all.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [all[i], all[j]] = [all[j], all[i]];
       }
       return all;
     },
@@ -123,10 +83,11 @@
   let state = { enabled: false, animalTheme: "dog", gifMode: false, active: false };
   let imageUrls = [];
   let prefetching = false;
-  const imageCache = {};
   let originalParent = null;
   let originalNextSibling = null;
   let originalPlayerStyle = "";
+
+  // video/container 강제 사이즈 관련
   let videoObserver = null;
   let videoForceInterval = null;
 
@@ -136,35 +97,20 @@
   }
 
   // ═══════════════════════════════════════
-  //  프리페치 (캐시 지원)
+  //  프리페치
   // ═══════════════════════════════════════
-  async function prefetch(forceRefresh = false) {
+  async function prefetch() {
     if (prefetching) return;
-    const theme = state.animalTheme;
-    const useGif = state.gifMode && theme === "cat";
-    const fetchKey = useGif ? "cat_gif" : theme;
-
-    // 캐시 히트
-    if (!forceRefresh && imageCache[fetchKey] && imageCache[fetchKey].length > 0) {
-      imageUrls = imageCache[fetchKey];
-      console.log("[CV] Cache hit:", fetchKey, imageUrls.length);
-      return;
-    }
-
     prefetching = true;
-    const t0 = performance.now();
-    console.log("[CV] Fetching:", fetchKey);
+    console.log("[CV] Prefetching:", state.animalTheme);
     try {
-      const fetcher = THEME_FETCHERS[fetchKey] || THEME_FETCHERS.dog;
-      imageUrls = await fetcher(TILE_COUNT);
-      imageCache[fetchKey] = imageUrls;
-      console.log("[CV] Got", imageUrls.length, "urls in", Math.round(performance.now() - t0), "ms");
-      // 브라우저 이미지 캐시 프리로드
-      imageUrls.forEach(u => { const img = new Image(); img.src = u; });
+      const fetcher = THEME_FETCHERS[state.animalTheme] || THEME_FETCHERS.dog;
+      imageUrls = await fetcher(TILE_COUNT, state.gifMode);
+      console.log("[CV] Got", imageUrls.length, "urls");
     } catch (e) {
-      console.warn("[CV] Prefetch error:", e.message);
+      console.log("[CV] Prefetch error:", e.message);
       try {
-        const res = await fetch("https://dog.ceo/api/breeds/image/random/30");
+        const res = await fetch("https://dog.ceo/api/breeds/image/random/50");
         const data = await res.json();
         imageUrls = data.message || [];
       } catch (_) { imageUrls = []; }
@@ -172,23 +118,8 @@
     prefetching = false;
   }
 
-  // 백그라운드 프리워밍: 첫 로드 후 빠른 테마들 미리 캐시
-  async function prewarmCache() {
-    const fastThemes = ["dog", "cat", "fox"]; // 네트워크 요청 적은 테마
-    for (const t of fastThemes) {
-      if (imageCache[t]) continue;
-      try {
-        const fetcher = THEME_FETCHERS[t];
-        const urls = await fetcher(TILE_COUNT);
-        imageCache[t] = urls;
-        urls.forEach(u => { const img = new Image(); img.src = u; });
-        console.log("[CV] Prewarmed:", t);
-      } catch (_) {}
-    }
-  }
-
   // ═══════════════════════════════════════
-  //  영상 감지
+  //  영상 재생 중인지 감지
   // ═══════════════════════════════════════
   function getVideoSrc() {
     const video = document.querySelector("#movie_player video");
@@ -196,7 +127,7 @@
   }
 
   // ═══════════════════════════════════════
-  //  video 엘리먼트 크기 강제
+  //  video 엘리먼트 크기 강제 (YouTube JS 대항)
   // ═══════════════════════════════════════
   function forceVideoFill() {
     const frame = document.getElementById("cv-frame");
@@ -221,11 +152,15 @@
   function startVideoForcer() {
     stopVideoForcer();
     forceVideoFill();
+
+    // MutationObserver: YouTube JS가 video style을 바꿀 때마다 강제
     const video = document.querySelector("#movie_player video");
     if (video) {
       videoObserver = new MutationObserver(() => forceVideoFill());
       videoObserver.observe(video, { attributes: true, attributeFilter: ["style"] });
     }
+
+    // 백업: 500ms 간격으로도 강제 (광고 전환 등 대비)
     videoForceInterval = setInterval(forceVideoFill, 500);
   }
 
@@ -245,15 +180,18 @@
 
     const playerRect = player.getBoundingClientRect();
     const playerAspect = playerRect.width / playerRect.height;
+    console.log("[CV] Player:", playerRect.width.toFixed(0), "x", playerRect.height.toFixed(0), "aspect:", playerAspect.toFixed(3));
 
     originalParent = player.parentNode;
     originalNextSibling = player.nextSibling;
     originalPlayerStyle = player.getAttribute("style") || "";
 
+    // ① 벽
     const wall = document.createElement("div");
     wall.id = "cv-wall";
     fillWall(wall);
 
+    // ② 프레임 — 플레이어 원본 비율 기반
     const frame = document.createElement("div");
     frame.id = "cv-frame";
     const frameHeight = VIDEO_WIDTH / playerAspect;
@@ -272,6 +210,7 @@
       clip-path: none !important;
     `;
 
+    // ③ 영상 미재생 안내
     const noVideoMsg = document.createElement("div");
     noVideoMsg.id = "cv-no-video";
     noVideoMsg.style.cssText = `
@@ -292,6 +231,7 @@
     `;
     frame.appendChild(noVideoMsg);
 
+    // ④ 플레이어 이동
     frame.appendChild(player);
     player.style.setProperty("width", "100%", "important");
     player.style.setProperty("height", "100%", "important");
@@ -303,11 +243,16 @@
 
     state.active = true;
 
+    // ⑤ YouTube에게 리사이즈 알림 → 내부 레이아웃 재계산
     window.dispatchEvent(new Event("resize"));
+
+    // ⑥ video 엘리먼트 크기 강제 (YouTube JS 대항)
     startVideoForcer();
+
+    // ⑦ 영상 상태 감시
     startVideoWatcher();
 
-    console.log("[CV] Activated!");
+    console.log("[CV] Activated! Frame:", VIDEO_WIDTH + "vw x " + frameHeight.toFixed(2) + "vw");
   }
 
   // ── 영상 상태 감시 ──
@@ -317,9 +262,14 @@
     updateNoVideoVisibility();
     videoWatcherInterval = setInterval(updateNoVideoVisibility, 1000);
   }
+
   function stopVideoWatcher() {
-    if (videoWatcherInterval) { clearInterval(videoWatcherInterval); videoWatcherInterval = null; }
+    if (videoWatcherInterval) {
+      clearInterval(videoWatcherInterval);
+      videoWatcherInterval = null;
+    }
   }
+
   function updateNoVideoVisibility() {
     const msg = document.getElementById("cv-no-video");
     if (!msg) return;
@@ -328,13 +278,13 @@
     msg.style.pointerEvents = hasVideo ? "none" : "auto";
   }
 
-  // ── 벽 이미지 채우기 (DocumentFragment 사용) ──
+  // ── 벽 이미지 채우기 ──
   function fillWall(wall) {
     wall.querySelectorAll(".cv-tile").forEach(t => t.remove());
     const urls = imageUrls.length > 0 ? imageUrls : [];
-    const fragment = document.createDocumentFragment();
+    const totalNeeded = TILE_COUNT;
 
-    for (let i = 0; i < TILE_COUNT; i++) {
+    for (let i = 0; i < totalNeeded; i++) {
       const tile = document.createElement("div");
       tile.className = "cv-tile";
       tile.style.background = randomPastel();
@@ -343,20 +293,17 @@
         const url = urls[i % urls.length];
         const img = document.createElement("img");
         img.src = url;
-        img.loading = "lazy"; // 브라우저 네이티브 레이지 로딩
         img.alt = "";
         img.draggable = false;
         img.style.opacity = "0";
-        img.style.transition = "opacity 0.3s";
+        img.style.transition = "opacity 0.4s";
         img.onload = () => { img.style.opacity = "1"; };
         img.onerror = () => {};
         tile.appendChild(img);
       }
 
-      fragment.appendChild(tile);
+      wall.appendChild(tile);
     }
-
-    wall.appendChild(fragment);
   }
 
   // ═══════════════════════════════════════
@@ -369,6 +316,7 @@
     const wall = document.getElementById("cv-wall");
     const player = document.querySelector("#movie_player");
 
+    // video/container 스타일 복원
     const video = document.querySelector("#movie_player video");
     if (video) {
       video.style.removeProperty("width");
@@ -388,6 +336,7 @@
       } else {
         player.removeAttribute("style");
       }
+
       if (originalNextSibling && originalNextSibling.parentNode === originalParent) {
         originalParent.insertBefore(player, originalNextSibling);
       } else {
@@ -402,21 +351,15 @@
     originalPlayerStyle = "";
     state.active = false;
 
+    // YouTube에게 원래 크기로 되돌리라고 알림
     window.dispatchEvent(new Event("resize"));
+
     console.log("[CV] Deactivated");
   }
 
   // ── 테마 변경 ──
   async function updateTheme(theme) {
     state.animalTheme = theme;
-    await prefetch();
-    const wall = document.getElementById("cv-wall");
-    if (wall) fillWall(wall);
-  }
-
-  // ── GIF 모드 변경 ──
-  async function updateGifMode(gifMode) {
-    state.gifMode = gifMode;
     await prefetch();
     const wall = document.getElementById("cv-wall");
     if (wall) fillWall(wall);
@@ -441,12 +384,9 @@
   chrome.storage.sync.get(["enabled", "animalTheme", "gifMode"], (data) => {
     console.log("[CV] Storage:", JSON.stringify(data));
     if (data.animalTheme) state.animalTheme = data.animalTheme;
-    if (data.gifMode) state.gifMode = data.gifMode;
-    prefetch().then(() => {
-      if (data.enabled) toggle(true);
-      // 첫 로드 후 인기 테마 백그라운드 프리워밍
-      setTimeout(prewarmCache, 2000);
-    });
+    state.gifMode = data.gifMode || false;
+    prefetch();
+    if (data.enabled) toggle(true);
   });
 
   // ── 메시지 ──
@@ -462,8 +402,37 @@
         updateTheme(msg.theme).then(() => sendResponse({ ok: true }));
         return true;
       case "setGifMode":
-        updateGifMode(msg.gifMode).then(() => sendResponse({ ok: true }));
-        return true;
+        state.gifMode = msg.gifMode;
+        if (state.animalTheme === "cat" && state.active) {
+          if (msg.gifMode) {
+            // 이미 고양이 표시 중 → 10% 타일만 GIF로 교체
+            const wall = document.getElementById("cv-wall");
+            if (wall) {
+              const tiles = wall.querySelectorAll(".cv-tile");
+              const gifCount = Math.round(tiles.length * 0.1);
+              const indices = Array.from({length: tiles.length}, (_, i) => i);
+              for (let i = indices.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [indices[i], indices[j]] = [indices[j], indices[i]];
+              }
+              const base = Date.now();
+              for (let k = 0; k < gifCount; k++) {
+                const tile = tiles[indices[k]];
+                const img = tile.querySelector("img");
+                if (img) {
+                  img.style.opacity = "0";
+                  img.src = `https://cataas.com/cat/gif?t=${base}_swap_${k}`;
+                  img.onload = () => { img.style.opacity = "1"; };
+                }
+              }
+            }
+          } else {
+            // GIF OFF → 전체 일반 고양이로 다시 생성
+            updateTheme("cat");
+          }
+        }
+        sendResponse({ ok: true });
+        break;
       case "getState":
         sendResponse({ ...state, imageCount: imageUrls.length });
         break;

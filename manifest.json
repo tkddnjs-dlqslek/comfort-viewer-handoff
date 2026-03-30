@@ -5,12 +5,7 @@
   "description": "공포/스릴러 영상 주변에 귀여운 동물 친구들을 배치해 안정감을 줍니다.",
   "permissions": ["storage", "activeTab"],
   "host_permissions": [
-    "https://dog.ceo/*",
-    "https://cataas.com/*",
-    "https://shibe.online/*",
-    "https://loremflickr.com/*",
-    "https://some-random-api.com/*",
-    "https://randomfox.ca/*"
+    "https://cataas.com/*"
   ],
   "icons": {
     "16": "icons/icon16.png",
@@ -33,6 +28,10 @@
       "description": "컴포트 모드 켜기/끄기"
     }
   },
+  "web_accessible_resources": [{
+    "resources": ["images/*"],
+    "matches": ["*://*.youtube.com/*", "*://*.netflix.com/*", "*://*.tving.com/*", "*://*.wavve.com/*", "*://*.coupangplay.com/*"]
+  }],
   "background": {
     "service_worker": "background.js"
   },
