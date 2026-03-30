@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Comfort Viewer - Privacy Policy</title>
+  <style>
+    body {
+      max-width: 720px;
+      margin: 40px auto;
+      padding: 0 20px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR', sans-serif;
+      line-height: 1.7;
+      color: #333;
+    }
+    h1 { font-size: 24px; margin-bottom: 8px; }
+    h2 { font-size: 18px; margin-top: 32px; }
+    .date { color: #888; font-size: 14px; margin-bottom: 32px; }
+    ul { padding-left: 20px; }
+    li { margin-bottom: 8px; }
+    .contact { background: #f5f5f5; padding: 16px; border-radius: 8px; margin-top: 32px; }
+  </style>
+</head>
+<body>
+  <h1>Privacy Policy - Comfort Viewer</h1>
+  <div class="date">Last updated: 2026-03-30</div>
+
+  <h2>Overview</h2>
+  <p>Comfort Viewer is a Chrome extension that places cute animal images around video players to provide visual comfort while watching scary or thrilling content. We are committed to protecting your privacy.</p>
+
+  <h2>Data Collection</h2>
+  <p><strong>We do not collect any personal data.</strong></p>
+  <ul>
+    <li>No user accounts or login required</li>
+    <li>No browsing history tracked</li>
+    <li>No analytics or telemetry</li>
+    <li>No cookies set by the extension</li>
+    <li>No data sent to external servers</li>
+  </ul>
+
+  <h2>Local Storage</h2>
+  <p>The extension uses <code>chrome.storage.sync</code> to save your preferences (selected animal theme, toggle state). This data is stored locally in your browser and synced across your Chrome devices via your Google account. We cannot access this data.</p>
+
+  <h2>Network Requests</h2>
+  <p>The extension makes <strong>no network requests by default</strong>. All animal images are bundled within the extension.</p>
+  <p>The only optional network request occurs when the <strong>GIF mode</strong> is enabled for the cat theme, which fetches GIF images from <a href="https://cataas.com">cataas.com</a> (Cat as a Service). No personal data is sent in these requests.</p>
+
+  <h2>Permissions</h2>
+  <ul>
+    <li><strong>activeTab</strong> — Required to inject the comfort overlay on the current tab when activated</li>
+    <li><strong>storage</strong> — Required to save your theme and toggle preferences</li>
+    <li><strong>Host permissions (youtube.com, netflix.com)</strong> — Required to run the content script on supported video platforms</li>
+  </ul>
+
+  <h2>Third-Party Services</h2>
+  <p>When GIF mode is enabled (cat theme only):</p>
+  <ul>
+    <li><strong>cataas.com</strong> — Used to fetch cat GIF images. Please refer to their own privacy policy for details.</li>
+  </ul>
+
+  <h2>Children's Privacy</h2>
+  <p>This extension does not knowingly collect any information from children under 13.</p>
+
+  <h2>Changes to This Policy</h2>
+  <p>We may update this privacy policy from time to time. Any changes will be reflected in the "Last updated" date above.</p>
+
+  <div class="contact">
+    <h2 style="margin-top:0">Contact</h2>
+    <p>If you have questions about this privacy policy, please open an issue on our <a href="https://github.com/tkddnjs-dlqslek/comfort-viewer-handoff">GitHub repository</a>.</p>
+  </div>
+</body>
+</html>

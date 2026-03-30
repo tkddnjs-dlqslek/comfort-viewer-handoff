@@ -30,21 +30,27 @@
   },
   "web_accessible_resources": [{
     "resources": ["images/*"],
-    "matches": ["*://*.youtube.com/*", "*://*.netflix.com/*", "*://*.tving.com/*", "*://*.wavve.com/*", "*://*.coupangplay.com/*"]
+    "matches": ["*://*.youtube.com/*", "*://*.netflix.com/*", "*://*.disneyplus.com/*"]
   }],
   "background": {
     "service_worker": "background.js"
   },
   "content_scripts": [
     {
-      "matches": [
-        "*://*.youtube.com/*",
-        "*://*.netflix.com/*",
-        "*://*.tving.com/*",
-        "*://*.wavve.com/*",
-        "*://*.coupangplay.com/*"
-      ],
-      "js": ["content.js"],
+      "matches": ["*://*.youtube.com/*"],
+      "js": ["content-youtube.js"],
+      "css": ["styles.css"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["*://*.netflix.com/*"],
+      "js": ["content-netflix.js"],
+      "css": ["styles.css"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["*://*.disneyplus.com/*"],
+      "js": ["content-disney.js"],
       "css": ["styles.css"],
       "run_at": "document_idle"
     }

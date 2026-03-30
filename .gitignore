@@ -1,9 +1,5 @@
 # Dev memo
 MEMORY.md
 
-# Previous versions
-content_v9.js
-content_v10.js
-content_v11.js
-content_v14.js
-content_loremflickr.js
+# Image backup (pre-resize originals)
+images_backup/

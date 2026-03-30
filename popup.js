@@ -68,7 +68,7 @@ document.addEventListener("DOMContentLoaded", () => {
       statusMsg.textContent = "🐾 컴포트 모드 활성화 중!";
       statusMsg.className = "status active";
     } else {
-      statusMsg.textContent = "지원: YouTube · Netflix · TVING · Wavve · Coupang Play";
+      statusMsg.textContent = "지원: YouTube · Netflix · Disney+";
       statusMsg.className = "status";
     }
   }

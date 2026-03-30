@@ -116,6 +116,29 @@ async function crawlAnimal(name, config) {
   console.log(`[${name}] Done: ${success} ok, ${fail} failed`);
 }
 
+async function resizeAll() {
+  const { execSync } = require("child_process");
+  console.log("\n[resize] Resizing all images to 200x150, quality 70%...");
+  try {
+    execSync(`python -c "
+from PIL import Image
+import os, glob
+count = 0
+for f in glob.glob('images/**/*.jpg', recursive=True):
+    try:
+        img = Image.open(f).convert('RGB')
+        img.thumbnail((200, 150), Image.LANCZOS)
+        img.save(f, 'JPEG', quality=70)
+        count += 1
+    except: pass
+print(f'Resized {count} images')
+"`, { cwd: path.join(__dirname, ".."), stdio: "inherit" });
+  } catch (e) {
+    console.log("[resize] Failed:", e.message);
+    console.log("[resize] Pillow 필요: pip install Pillow");
+  }
+}
+
 async function main() {
   console.log("=== Comfort Viewer Image Crawler ===");
   console.log(`Time: ${new Date().toISOString()}`);
@@ -124,6 +147,8 @@ async function main() {
   for (const [name, config] of Object.entries(ANIMALS)) {
     await crawlAnimal(name, config);
   }
+
+  await resizeAll();
 
   console.log("\nAll done!");
 }
