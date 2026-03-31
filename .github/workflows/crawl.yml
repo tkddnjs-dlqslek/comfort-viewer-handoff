@@ -2,7 +2,7 @@ name: Daily Image Crawler
 
 on:
   schedule:
-    - cron: '0 21 * * *'  # 21:00 UTC = 06:00 KST
+    - cron: '0 21 * * 0'  # 매주 일요일 21:00 UTC = 월요일 06:00 KST
   workflow_dispatch:       # 수동 실행 가능
 
 concurrency:

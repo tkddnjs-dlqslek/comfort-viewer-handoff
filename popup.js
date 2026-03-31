@@ -54,10 +54,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function updateStatus(enabled) {
     if (enabled) {
-      statusMsg.textContent = "🐾 컴포트 모드 활성화 중!";
+      statusMsg.textContent = "🐾 Comfort Mode is active.";
       statusMsg.className = "status active";
     } else {
-      statusMsg.textContent = "지원: YouTube · Netflix · Disney+";
+      statusMsg.textContent = "Supports: YouTube · Netflix · Disney+";
       statusMsg.className = "status";
     }
   }

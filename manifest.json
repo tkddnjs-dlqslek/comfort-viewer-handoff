@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Comfort Viewer - 무서운 영상도 편안하게",
+  "name": "Comfort Viewer - Watch scary videos comfortably",
   "version": "1.1.0",
-  "description": "공포/스릴러 영상 주변에 귀여운 동물 친구들을 배치해 안정감을 줍니다.",
+  "description": "Place cute animals around horror/thriller videos for visual comfort.",
   "permissions": ["storage", "activeTab"],
   "host_permissions": [],
   "icons": {
@@ -23,7 +23,7 @@
       "suggested_key": {
         "default": "Alt+C"
       },
-      "description": "컴포트 모드 켜기/끄기"
+      "description": "Toggle Comfort Mode"
     }
   },
   "web_accessible_resources": [{
